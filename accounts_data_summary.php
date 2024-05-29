@@ -3,7 +3,7 @@
         echo "<script>console.log('exporting...')</script>";
 
         // select needed data from database to export
-        $sql = "SELECT acct_master.IDNo, id_master.ClntName, SUM(CASE WHEN acct_master.AccTyp='LN' THEN acct_master.Balance ELSE 0 END) as TotalBalance, SUM(CASE WHEN acct_master.AccTyp='SA' THEN acct_master.Balance ELSE 0 END) as TotalSavingsBalance FROM acct_master LEFT JOIN id_master ON acct_master.IDNo=id_master.IDNo GROUP BY IDNo";
+        $sql = "SELECT acct_master.IDNo, id_master.ClntName, SUM(CASE WHEN acct_master.AccTyp='LN' THEN acct_master.Balance ELSE 0 END) as TotalLoanBalance, SUM(CASE WHEN acct_master.AccTyp='SA' THEN acct_master.Balance ELSE 0 END) as TotalSavingsBalance, SUM(CASE WHEN acct_master.AccTyp='SA' THEN acct_master.Balance ELSE 0 END) - SUM(CASE WHEN acct_master.AccTyp='LN' THEN acct_master.Balance ELSE 0 END) as TotalBalance FROM acct_master LEFT JOIN id_master ON acct_master.IDNo=id_master.IDNo GROUP BY IDNo";
 
         $data = $conn->query($sql);
         ob_end_clean(); // cleans the contents of the output buffer because the function will include html code if this is skipped
@@ -20,11 +20,11 @@
             $f = fopen('php://output', 'w');
 
             // set column headers
-            $fields = array('IDNo', 'ClntName', 'TotalLoanBalance', 'TotalSavingsBalance');
+            $fields = array('IDNo', 'ClntName', 'TotalLoanBalance', 'TotalSavingsBalance', 'TotalBalance');
             fputcsv($f, $fields, $delimiter);
 
             while ($row = $data -> fetch_assoc()){
-                $lineData = array($row['IDNo'], $row['ClntName'], $row['TotalBalance'], $row['TotalSavingsBalance']);
+                $lineData = array($row['IDNo'], $row['ClntName'], $row['TotalLoanBalance'], $row['TotalSavingsBalance'], $row['TotalBalance']);
                 fputcsv($f, $lineData, $delimiter);
             }
 
@@ -57,13 +57,14 @@
                 <th>Client Name</th>
                 <th>Total Loan Balance</th>
                 <th>Savings Balance</th>
+                <th>Total Balance</th>
             </tr>
         </thead>
 
         <tbody>
             <?php 
                 // selecting data from database, summarizing the data, then display to table
-                $sql = "SELECT acct_master.IDNo, id_master.ClntName, SUM(CASE WHEN acct_master.AccTyp='LN' THEN acct_master.Balance ELSE 0 END) as TotalBalance, SUM(CASE WHEN acct_master.AccTyp='SA' THEN acct_master.Balance ELSE 0 END) as TotalSavingsBalance FROM acct_master LEFT JOIN id_master ON acct_master.IDNo=id_master.IDNo GROUP BY IDNo";
+                $sql = "SELECT acct_master.IDNo, id_master.ClntName, SUM(CASE WHEN acct_master.AccTyp='LN' THEN acct_master.Balance ELSE 0 END) as TotalLoanBalance, SUM(CASE WHEN acct_master.AccTyp='SA' THEN acct_master.Balance ELSE 0 END) as TotalSavingsBalance, SUM(CASE WHEN acct_master.AccTyp='SA' THEN acct_master.Balance ELSE 0 END) - SUM(CASE WHEN acct_master.AccTyp='LN' THEN acct_master.Balance ELSE 0 END) as TotalBalance FROM acct_master LEFT JOIN id_master ON acct_master.IDNo=id_master.IDNo GROUP BY IDNo";
                 $data = $conn->query($sql);
 
 
@@ -71,14 +72,15 @@
                     $highestBalance = 0;
                     $highBalClnt = "";
                     while ($row = $data -> fetch_assoc()){
-                        if ($highestBalance < $row['TotalBalance']){
-                            $highestBalance = $row['TotalBalance'];
+                        if ($highestBalance < $row['TotalLoanBalance']){
+                            $highestBalance = $row['TotalLoanBalance'];
                             $highBalClnt = $row['ClntName'];
                         }
                         echo "<tr><td>" . $row['IDNo'] . "</td>" .
                                 "<td>" . $row['ClntName'] . "</td>" . 
-                                "<td>" . $row['TotalBalance'] . "</td>" .
+                                "<td>" . $row['TotalLoanBalance'] . "</td>" .
                                 "<td>" . $row['TotalSavingsBalance'] . "</td>" .
+                                "<td>" . $row['TotalBalance'] . "</td>" .
                                 "</tr>";
                     }
                 }
